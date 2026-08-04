@@ -489,7 +489,7 @@ class DRIFTLLM(BasePipelineElement):
                     f"with the checklist {self.node_checklist}."
                 )
 
-        assistant_message = {
+        assistant_message: ChatMessage = {
             "role": "assistant",
             "content": [text_content_block_from_string(content)] if content else None,
             "tool_calls": calls or None,

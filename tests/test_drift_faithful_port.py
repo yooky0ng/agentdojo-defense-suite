@@ -42,7 +42,7 @@ class _PromptClient:
 
 def test_client_preserves_upstream_completion_limit() -> None:
     openai = _OpenAI()
-    client = DRIFTClient(openai, "gpt-test")
+    client = DRIFTClient(openai, "gpt-test")  # type: ignore[arg-type]
 
     assert client.run("system", "user") == "ok"
     assert openai.completions.requests[0]["max_completion_tokens"] == 10000
