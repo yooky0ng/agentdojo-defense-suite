@@ -77,3 +77,35 @@ Remember the Original User Query:
 {query}
 
 </Execution Guidelines>"""
+
+NODE_JSON_FORMATTING_PROMPT = """
+You will be provided with a user query, and a function checklist extracted from that query. Your task is to rewrite the checklist into a JSON format using the structure and rules outlined below.
+[
+    {
+        "name": "plot_figure",
+        "required parameters": {
+            "shape": "square",
+            "size": 3
+        },
+        "conditions": null
+    },
+    {
+        "name": "get_list",
+        "required parameters": null,
+        "conditions": null
+    },
+    {
+        "name": "extract_item_information",
+        "required parameters": {
+            "item_name": null
+        },
+        "conditions": {'item_name': 'get_list'}
+    }
+]
+
+There are some transformation guidelines you should obey:
+1. Use null for Unspecified Values. If a parameter is mentioned but its value is not clearly provided in the user query, set its value to null, such as "required parameters": {"item_name": null}.
+2. Do not add or remove any parameters or conditions. Your transformation must reflect only the information explicitly provided in the original checklist metadata.
+3. All functions are Python-based. Ensure parameter names and values follow valid Python identifier syntax.
+4. Your output must be strictly JSON string format, with correct syntax and structure.
+"""
