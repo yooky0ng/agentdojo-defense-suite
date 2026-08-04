@@ -29,6 +29,7 @@ from agentdojo.agent_pipeline.tool_execution import (
     ToolsExecutor,
     tool_result_to_str,
 )
+from agentdojo.agent_pipeline.melon import MELON
 from agentdojo.functions_runtime import EmptyEnv, Env, FunctionsRuntime
 from agentdojo.logging import Logger
 from agentdojo.models import MODEL_PROVIDERS, ModelsEnum
@@ -45,6 +46,7 @@ DEFENSES = [
     "transformers_pi_detector",
     "spotlighting_with_delimiting",
     "repeat_user_prompt",
+    "melon",
 ]
 """Available defenses."""
 
@@ -229,6 +231,24 @@ class AgentPipeline(BasePipelineElement):
                     system_message_component,
                     init_query_component,
                     OpenAILLMToolFilter(TOOL_FILTER_PROMPT, llm.client, llm_name),
+                    llm,
+                    tools_loop,
+                ]
+            )
+            pipeline.name = f"{llm_name}-{config.defense}"
+            return pipeline
+        if config.defense == "melon":
+            tools_loop = ToolsExecutionLoop(
+                [
+                    ToolsExecutor(tool_output_formatter),
+                    MELON(llm, threshold=0.1),
+                ]
+            )
+
+            pipeline = cls(
+                [
+                    system_message_component,
+                    init_query_component,
                     llm,
                     tools_loop,
                 ]
