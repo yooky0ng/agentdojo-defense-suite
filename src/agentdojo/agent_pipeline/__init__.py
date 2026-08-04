@@ -1,6 +1,7 @@
 from agentdojo.agent_pipeline.agent_pipeline import AgentPipeline, PipelineConfig
 from agentdojo.agent_pipeline.base_pipeline_element import BasePipelineElement
 from agentdojo.agent_pipeline.basic_elements import InitQuery, SystemMessage
+from agentdojo.agent_pipeline.drift import DRIFTClient, DRIFTConfig, DRIFTLLM, DRIFTToolsExecutionLoop
 from agentdojo.agent_pipeline.errors import AbortAgentError
 from agentdojo.agent_pipeline.ground_truth_pipeline import GroundTruthPipeline
 from agentdojo.agent_pipeline.llms.anthropic_llm import AnthropicLLM
@@ -21,6 +22,10 @@ __all__ = [
     "BasePipelineElement",
     "BasePromptingLLM",
     "CohereLLM",
+    "DRIFTClient",
+    "DRIFTConfig",
+    "DRIFTLLM",
+    "DRIFTToolsExecutionLoop",
     "GoogleLLM",
     "GroundTruthPipeline",
     "InitQuery",
