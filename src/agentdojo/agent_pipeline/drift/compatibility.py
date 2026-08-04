@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import Any
 
-from agentdojo.functions_runtime import Function, FunctionCall, FunctionsRuntime
+from agentdojo.functions_runtime import FunctionCall, FunctionsRuntime
 from agentdojo.types import ChatMessage, get_text_content_as_str, text_content_block_from_string
 
 
