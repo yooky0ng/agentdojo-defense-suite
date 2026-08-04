@@ -17,6 +17,7 @@ from typing_extensions import Self
 
 from agentdojo.agent_pipeline.base_pipeline_element import BasePipelineElement
 from agentdojo.agent_pipeline.basic_elements import InitQuery, SystemMessage
+from agentdojo.agent_pipeline.drift import DRIFTClient, DRIFTLLM, DRIFTToolsExecutionLoop
 from agentdojo.agent_pipeline.llms.anthropic_llm import AnthropicLLM
 from agentdojo.agent_pipeline.llms.cohere_llm import CohereLLM
 from agentdojo.agent_pipeline.llms.google_llm import GoogleLLM
@@ -47,6 +48,7 @@ DEFENSES = [
     "spotlighting_with_delimiting",
     "repeat_user_prompt",
     "melon",
+    "drift",
 ]
 """Available defenses."""
 
@@ -250,6 +252,26 @@ class AgentPipeline(BasePipelineElement):
                     system_message_component,
                     init_query_component,
                     llm,
+                    tools_loop,
+                ]
+            )
+            pipeline.name = f"{llm_name}-{config.defense}"
+            return pipeline
+        if config.defense == "drift":
+            if not isinstance(llm, OpenAILLM):
+                raise ValueError("DRIFT is currently supported only for OpenAI models")
+            drift_llm = DRIFTLLM(DRIFTClient(llm.client, llm.model, llm.temperature))
+            tools_loop = DRIFTToolsExecutionLoop(
+                [
+                    ToolsExecutor(tool_output_formatter),
+                    drift_llm,
+                ]
+            )
+            pipeline = cls(
+                [
+                    system_message_component,
+                    init_query_component,
+                    drift_llm,
                     tools_loop,
                 ]
             )
