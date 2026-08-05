@@ -17,20 +17,20 @@ from typing_extensions import Self
 
 from agentdojo.agent_pipeline.base_pipeline_element import BasePipelineElement
 from agentdojo.agent_pipeline.basic_elements import InitQuery, SystemMessage
-from agentdojo.agent_pipeline.drift import DRIFTClient, DRIFTLLM, DRIFTToolsExecutionLoop
+from agentdojo.agent_pipeline.drift import DRIFTLLM, DRIFTClient, DRIFTToolsExecutionLoop
 from agentdojo.agent_pipeline.llms.anthropic_llm import AnthropicLLM
 from agentdojo.agent_pipeline.llms.cohere_llm import CohereLLM
 from agentdojo.agent_pipeline.llms.google_llm import GoogleLLM
 from agentdojo.agent_pipeline.llms.local_llm import LocalLLM
 from agentdojo.agent_pipeline.llms.openai_llm import OpenAILLM, OpenAILLMToolFilter
 from agentdojo.agent_pipeline.llms.prompting_llm import PromptingLLM
+from agentdojo.agent_pipeline.melon import MELON
 from agentdojo.agent_pipeline.pi_detector import TransformersBasedPIDetector
 from agentdojo.agent_pipeline.tool_execution import (
     ToolsExecutionLoop,
     ToolsExecutor,
     tool_result_to_str,
 )
-from agentdojo.agent_pipeline.melon import MELON
 from agentdojo.functions_runtime import EmptyEnv, Env, FunctionsRuntime
 from agentdojo.logging import Logger
 from agentdojo.models import MODEL_PROVIDERS, ModelsEnum
