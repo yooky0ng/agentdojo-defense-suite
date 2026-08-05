@@ -4,7 +4,7 @@ import logging
 import os
 from collections.abc import Iterable, Sequence
 from functools import partial
-from typing import Literal
+from typing import Literal, cast
 
 import anthropic
 import cohere
@@ -37,6 +37,7 @@ from agentdojo.agent_pipeline.tool_execution import (
     ToolsExecutor,
     tool_result_to_str,
 )
+from agentdojo.defenses.camel_adapter import build_camel_pipeline
 from agentdojo.functions_runtime import EmptyEnv, Env, FunctionsRuntime
 from agentdojo.logging import Logger
 from agentdojo.models import MODEL_PROVIDERS, ModelsEnum
@@ -56,6 +57,7 @@ DEFENSES = [
     "melon",
     "drift",
     "ipiguard",
+    "camel",
 ]
 """Available defenses."""
 
@@ -175,6 +177,8 @@ class PipelineConfig(BaseModel):
     override `system_message_name`."""
     tool_output_format: Literal["yaml", "json"] | None = None
     """Format to use for tool outputs. If not provided, the default format is yaml."""
+    suite_name: str | None = None
+    """Suite name required by suite-aware external defenses."""
 
     @model_validator(mode="after")
     def validate_system_message(self) -> Self:
@@ -212,6 +216,13 @@ class AgentPipeline(BasePipelineElement):
     def from_config(cls, config: PipelineConfig) -> Self:
         """Creates a pipeline for a given model and defense."""
         # TODO: make this more elegant
+        if config.defense == "camel":
+            if not isinstance(config.llm, str):
+                raise ValueError("CaMeL requires a named model")
+            if config.suite_name is None:
+                raise ValueError("CaMeL requires a suite name")
+            return cast(Self, build_camel_pipeline(config.llm, config.suite_name))
+
         llm = (
             get_llm(MODEL_PROVIDERS[ModelsEnum(config.llm)], config.llm, config.model_id, config.tool_delimiter)
             if isinstance(config.llm, str)
