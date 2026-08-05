@@ -27,6 +27,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "google-genai>=1.15.0",
     "json-repair==0.55.1",
+    "networkx>=3.0",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"
@@ -115,6 +116,9 @@ select = [
 [tool.ruff.lint.per-file-ignores]
 "src/agentdojo/agent_pipeline/drift/DRIFTLLM.py" = ["N999"]
 "src/agentdojo/agent_pipeline/drift/DRIFTToolsExecutionLoop.py" = ["N999"]
+"src/agentdojo/agent_pipeline/ipiguard/ipiguard_llm.py" = ["I001", "F401", "ERA001", "F541", "RUF001"]
+"src/agentdojo/agent_pipeline/ipiguard/tool_execution.py" = ["I001", "F401", "RUF001"]
+"src/agentdojo/agent_pipeline/ipiguard/compatibility.py" = ["N802"]
 
 [tool.ruff.format]
 docstring-code-format = true
@@ -123,7 +127,7 @@ docstring-code-format = true
 venvPath = "."
 venv = ".venv"
 pythonVersion = "3.10"
-ignore = ["**/experimental/**"]
+ignore = ["**/experimental/**", "src/agentdojo/agent_pipeline/ipiguard/ipiguard_llm.py"]
 homepage = "https://agentdojo.spylab.ai"
 repository = "https://github.com/ethz-spylab/agentdojo"
 documentation = "https://agentdojo.spylab.ai/api/agent_pipeline/basic_elements/"
