@@ -112,6 +112,10 @@ select = [
     "RUF",
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"src/agentdojo/agent_pipeline/drift/DRIFTLLM.py" = ["N999"]
+"src/agentdojo/agent_pipeline/drift/DRIFTToolsExecutionLoop.py" = ["N999"]
+
 [tool.ruff.format]
 docstring-code-format = true
 
