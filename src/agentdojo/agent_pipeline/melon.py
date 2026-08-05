@@ -1,7 +1,7 @@
 import os
 from collections.abc import Sequence
 from pprint import pprint
-from typing import Literal
+from typing import Any, Literal, cast
 
 import numpy as np
 
@@ -78,17 +78,30 @@ class MELON(PromptInjectionDetector):
             return query, runtime, env, messages, extra_args
         if messages[-1]["role"] != "tool":
             return query, runtime, env, messages, extra_args
-        messages_to_check = [DetectorTask(len(messages) - 1, messages[-1], messages[-1]["content"])]
+        messages_to_check = [
+            DetectorTask(
+                len(messages) - 1,
+                messages[-1],
+                cast(str, messages[-1]["content"]),
+            )
+        ]
         n_tool_results = 1
 
         for i, message in reversed(list(enumerate(messages[:-1]))):
             if message["role"] != "tool":
                 break
-            messages_to_check.append(DetectorTask(i, message, message["content"]))
+            messages_to_check.append(
+                DetectorTask(i, message, cast(str, message["content"]))
+            )
             n_tool_results += 1
 
         processed_messages = list(messages[:-n_tool_results])
         is_checked = False
+        updated_query = query
+        updated_runtime = runtime
+        updated_env = env
+        updated_messages = messages
+        updated_extra_args = extra_args
         for task in messages_to_check:
             if is_checked:
                 break
@@ -143,7 +156,7 @@ class MELON(PromptInjectionDetector):
         
         return updated_query, updated_runtime, updated_env, updated_messages, updated_extra_args
 
-    def detect(self, tool_output):
+    def detect(self, tool_output: Any) -> Any:
 
         import copy
         query, runtime, env, messages, extra_args = tool_output
@@ -358,5 +371,5 @@ class MELON(PromptInjectionDetector):
 
         return (updated_query, updated_runtime, updated_env, updated_messages, updated_extra_args), (is_injection, max_cosine_sim)
 
-    def transform(self, tool_output):
+    def transform(self, tool_output: Any) -> Any:
         return [text_content_block_from_string("<Data omitted because a prompt injection was detected>")]
