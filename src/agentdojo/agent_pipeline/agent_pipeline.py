@@ -17,7 +17,6 @@ from typing_extensions import Self
 
 from agentdojo.agent_pipeline.base_pipeline_element import BasePipelineElement
 from agentdojo.agent_pipeline.basic_elements import InitQuery, SystemMessage
-from agentdojo.agent_pipeline.drift import DRIFTLLM, DRIFTClient, DRIFTToolsExecutionLoop
 from agentdojo.agent_pipeline.ipiguard import (
     DagToolsExecutionLoop,
     DagToolsExecutor,
@@ -38,6 +37,7 @@ from agentdojo.agent_pipeline.tool_execution import (
     tool_result_to_str,
 )
 from agentdojo.defenses.camel_adapter import build_camel_pipeline
+from agentdojo.defenses.drift_adapter import build_drift_pipeline
 from agentdojo.functions_runtime import EmptyEnv, Env, FunctionsRuntime
 from agentdojo.logging import Logger
 from agentdojo.models import MODEL_PROVIDERS, ModelsEnum
@@ -280,25 +280,9 @@ class AgentPipeline(BasePipelineElement):
             pipeline.name = f"{llm_name}-{config.defense}"
             return pipeline
         if config.defense == "drift":
-            if not isinstance(llm, OpenAILLM):
-                raise ValueError("DRIFT is currently supported only for OpenAI models")
-            drift_llm = DRIFTLLM(DRIFTClient(llm.client, llm.model, llm.temperature))
-            tools_loop = DRIFTToolsExecutionLoop(
-                [
-                    ToolsExecutor(tool_output_formatter),
-                    drift_llm,
-                ]
-            )
-            pipeline = cls(
-                [
-                    system_message_component,
-                    init_query_component,
-                    drift_llm,
-                    tools_loop,
-                ]
-            )
-            pipeline.name = f"{llm_name}-{config.defense}"
-            return pipeline
+            if llm_name is None:
+                raise ValueError("DRIFT requires a named model")
+            return cast(Self, build_drift_pipeline(llm_name, tool_output_formatter))
         if config.defense == "ipiguard":
             if not isinstance(llm, OpenAILLM):
                 raise ValueError("IPIGuard is currently supported only for OpenAI models")
