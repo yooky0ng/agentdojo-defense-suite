@@ -17,12 +17,6 @@ from typing_extensions import Self
 
 from agentdojo.agent_pipeline.base_pipeline_element import BasePipelineElement
 from agentdojo.agent_pipeline.basic_elements import InitQuery, SystemMessage
-from agentdojo.agent_pipeline.ipiguard import (
-    DagToolsExecutionLoop,
-    DagToolsExecutor,
-    OpenAIConstructLLM,
-    OpenAITraverseLLM,
-)
 from agentdojo.agent_pipeline.llms.anthropic_llm import AnthropicLLM
 from agentdojo.agent_pipeline.llms.cohere_llm import CohereLLM
 from agentdojo.agent_pipeline.llms.google_llm import GoogleLLM
@@ -37,6 +31,7 @@ from agentdojo.agent_pipeline.tool_execution import (
 )
 from agentdojo.defenses.camel_adapter import build_camel_pipeline
 from agentdojo.defenses.drift_adapter import build_drift_pipeline
+from agentdojo.defenses.ipiguard_adapter import build_ipiguard_elements
 from agentdojo.defenses.melon_adapter import build_melon_detector
 from agentdojo.functions_runtime import EmptyEnv, Env, FunctionsRuntime
 from agentdojo.logging import Logger
@@ -288,9 +283,7 @@ class AgentPipeline(BasePipelineElement):
         if config.defense == "ipiguard":
             if not isinstance(llm, OpenAILLM):
                 raise ValueError("IPIGuard is currently supported only for OpenAI models")
-            construct_llm = OpenAIConstructLLM(llm.client, llm.model, temperature=llm.temperature)
-            traverse_llm = OpenAITraverseLLM(llm.client, llm.model, temperature=llm.temperature)
-            tools_loop = DagToolsExecutionLoop(DagToolsExecutor(traverse_llm, tool_output_formatter))
+            construct_llm, tools_loop = build_ipiguard_elements(llm.client, llm.model, tool_output_formatter)
             pipeline = cls([system_message_component, init_query_component, construct_llm, tools_loop])
             pipeline.name = f"{llm_name}-{config.defense}"
             return pipeline
