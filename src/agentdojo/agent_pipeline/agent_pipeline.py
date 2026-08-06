@@ -29,7 +29,6 @@ from agentdojo.agent_pipeline.llms.google_llm import GoogleLLM
 from agentdojo.agent_pipeline.llms.local_llm import LocalLLM
 from agentdojo.agent_pipeline.llms.openai_llm import OpenAILLM, OpenAILLMToolFilter
 from agentdojo.agent_pipeline.llms.prompting_llm import PromptingLLM
-from agentdojo.agent_pipeline.melon import MELON
 from agentdojo.agent_pipeline.pi_detector import TransformersBasedPIDetector
 from agentdojo.agent_pipeline.tool_execution import (
     ToolsExecutionLoop,
@@ -38,6 +37,7 @@ from agentdojo.agent_pipeline.tool_execution import (
 )
 from agentdojo.defenses.camel_adapter import build_camel_pipeline
 from agentdojo.defenses.drift_adapter import build_drift_pipeline
+from agentdojo.defenses.melon_adapter import build_melon_detector
 from agentdojo.functions_runtime import EmptyEnv, Env, FunctionsRuntime
 from agentdojo.logging import Logger
 from agentdojo.models import MODEL_PROVIDERS, ModelsEnum
@@ -262,10 +262,12 @@ class AgentPipeline(BasePipelineElement):
             pipeline.name = f"{llm_name}-{config.defense}"
             return pipeline
         if config.defense == "melon":
+            if not isinstance(llm, OpenAILLM):
+                raise ValueError("MELON is currently supported only for OpenAI models")
             tools_loop = ToolsExecutionLoop(
                 [
                     ToolsExecutor(tool_output_formatter),
-                    MELON(llm, threshold=0.1),
+                    build_melon_detector(llm, threshold=0.1),
                 ]
             )
 
