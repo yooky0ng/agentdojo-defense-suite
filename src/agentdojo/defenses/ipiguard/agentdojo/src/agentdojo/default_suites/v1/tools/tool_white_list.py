@@ -50,4 +50,3 @@ whitelist = {
     "list_files",
     "search_files",
 }
-

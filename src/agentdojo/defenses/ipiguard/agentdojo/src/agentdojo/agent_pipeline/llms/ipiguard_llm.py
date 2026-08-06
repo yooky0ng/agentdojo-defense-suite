@@ -1,32 +1,38 @@
-"""Official IPIGuard implementation ported from Greysahy/ipiguard commit 4e686ed2."""
-
-from __future__ import annotations
-
+import yaml
 import json
-from collections.abc import Sequence
-from typing import Any
-
+import re
 import networkx as nx
+import matplotlib.pylab as plt
+from networkx import topological_sort
+from collections import defaultdict
+from dotenv import load_dotenv
+from collections.abc import Sequence
+
 import openai
 from openai._types import NOT_GIVEN
 from openai.types.chat import (
+    ChatCompletionAssistantMessageParam,
     ChatCompletionMessage,
     ChatCompletionMessageParam,
+    ChatCompletionMessageToolCall,
+    ChatCompletionMessageToolCallParam,
     ChatCompletionSystemMessageParam,
+    ChatCompletionToolMessageParam,
+    ChatCompletionToolParam,
     ChatCompletionUserMessageParam,
 )
+from openai.types.shared_params import FunctionDefinition
 
-from agentdojo.agent_pipeline.ipiguard.compatibility import (
-    ChatAssistantMessage,
-    ChatSystemMessage,
-    ChatToolResultMessage,
-    ChatUserMessage,
-    append_message_text,
-    message_text,
-)
 from agentdojo.agent_pipeline.llms.openai_llm import OpenAILLM, _message_to_openai
-from agentdojo.functions_runtime import EmptyEnv, Env, Function, FunctionCall, FunctionsRuntime
-from agentdojo.types import ChatMessage
+from agentdojo.ast_utils import (
+    ASTParsingError,
+    create_python_function_from_tool_call,
+    parse_tool_calls_from_python_function,
+)
+from agentdojo.functions_runtime import EmptyEnv, Env, Function, FunctionsRuntime, FunctionCall
+from agentdojo.types import ChatAssistantMessage, ChatMessage, ChatSystemMessage, ChatToolResultMessage, ChatUserMessage
+
+from agentdojo.default_suites.v1.tools.tool_white_list import whitelist
 
 def _openai_to_assistant_message(message: ChatCompletionMessage) -> ChatAssistantMessage:
     return ChatAssistantMessage(role="assistant", content=message.content, tool_calls=None)
@@ -44,7 +50,7 @@ def _tool_call_to_str(tool_call: FunctionCall, error=None) -> str:
 def _tool_returned_data_to_str(message: ChatToolResultMessage) -> str:
     tool_returned_data_dict = {
         "function": message["tool_call"].function,
-        "returned_data": message_text(message),
+        "returned_data": message["content"],
         "id": message["tool_call_id"]
     }
     return json.dumps(tool_returned_data_dict, indent=2)
@@ -220,10 +226,10 @@ class OpenAIConstructLLM(OpenAILLM):
         pre_plan = completion.choices[0].message.content
         prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
         add_tokens(extra_args=extra_args, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
-        append_message_text(user_message, f"\nThese information maybe helpful for you to complete the DAG:\n{pre_plan}")
+        user_message["content"] += f"\nThese information maybe helpful for you to complete the DAG:\n{pre_plan}"
 
         construct_system_message = self._get_system_message(system_message, list(runtime.functions.values()))
-        openai_messages = [_message_to_openai(construct_system_message, self.model), _message_to_openai(user_message, self.model)]
+        openai_messages = [_message_to_openai(construct_system_message), _message_to_openai(user_message)]
     
         completion = chat_completion_request(self.client, self.model, openai_messages, self.temperature, json_format=True)
         prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
@@ -457,7 +463,7 @@ class OpenAITraverseLLM(OpenAILLM):
 
         user_message = self._prepare_history_prompt(tool_call)
         history = [*messages, user_message]
-        openai_messages = [_message_to_openai(message, self.model) for message in history]
+        openai_messages = [_message_to_openai(message) for message in history]
 
         completion = chat_completion_request(self.client, self.model, openai_messages, self.temperature, json_format=True)
         prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
@@ -490,8 +496,8 @@ class OpenAITraverseLLM(OpenAILLM):
         extra_args: dict = {},
     ) -> tuple[str, FunctionsRuntime, Env, Sequence[ChatMessage], dict]:
         user_message = self._prepare_expansion_prompt(extra_args['dag'], query, get_tool_docs(list(runtime.functions.values())))
-        openai_messages = [_message_to_openai(message, self.model) for message in messages]
-        openai_messages.append(_message_to_openai(user_message, self.model))
+        openai_messages = [_message_to_openai(message) for message in messages]
+        openai_messages.append(_message_to_openai(user_message))
 
         completion = chat_completion_request(self.client, self.model, openai_messages, self.temperature, json_format=True)
         prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
@@ -512,7 +518,7 @@ class OpenAITraverseLLM(OpenAILLM):
         messages: Sequence[ChatMessage] = [],
         extra_args: dict = {},
     ) -> tuple[str, FunctionsRuntime, Env, Sequence[ChatMessage], dict]:
-        openai_messages = [_message_to_openai(message, self.model) for message in messages]
+        openai_messages = [_message_to_openai(message) for message in messages]
         completion = chat_completion_request(self.client, self.model, openai_messages, self.temperature, json_format=False)
         prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
         add_tokens(extra_args=extra_args, prompt_tokens=prompt_tokens, completion_tokens=completion_tokens)
@@ -531,7 +537,7 @@ class OpenAITraverseLLM(OpenAILLM):
         
         user_message = self._prepare_history_prompt(tool_call, error_messages=error_messages, fix=True)
         history = [*messages, user_message]
-        openai_messages = [_message_to_openai(message, self.model) for message in history]
+        openai_messages = [_message_to_openai(message) for message in history]
 
         completion = chat_completion_request(self.client, self.model, openai_messages, self.temperature, json_format=True)
         prompt_tokens, completion_tokens = completion.usage.prompt_tokens, completion.usage.completion_tokens
