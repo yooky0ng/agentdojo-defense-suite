@@ -34,6 +34,12 @@ from agentdojo.defenses.drift_adapter import build_drift_pipeline
 from agentdojo.defenses.ipiguard_adapter import build_ipiguard_elements
 from agentdojo.defenses.melon_adapter import build_melon_detector
 from agentdojo.defenses.progent_adapter import ProgentPolicyBootstrap
+from agentdojo.defenses.task_shield.core import TaskShield, TaskShieldModel
+from agentdojo.defenses.task_shield.pipeline import (
+    TaskShieldLLM,
+    TaskShieldToolsExecutor,
+    TaskShieldUserTaskExtractor,
+)
 from agentdojo.functions_runtime import EmptyEnv, Env, FunctionsRuntime
 from agentdojo.logging import Logger
 from agentdojo.models import MODEL_PROVIDERS, ModelsEnum
@@ -55,6 +61,7 @@ DEFENSES = [
     "ipiguard",
     "camel",
     "progent",
+    "task_shield",
 ]
 """Available defenses."""
 
@@ -297,6 +304,28 @@ class AgentPipeline(BasePipelineElement):
                     init_query_component,
                     ProgentPolicyBootstrap(config.suite_name),
                     llm,
+                    tools_loop,
+                ]
+            )
+            pipeline.name = f"{llm_name}-{config.defense}"
+            return pipeline
+        if config.defense == "task_shield":
+            if not isinstance(llm, OpenAILLM):
+                raise ValueError("Task Shield is currently supported only for OpenAI models")
+            shield = TaskShield(TaskShieldModel(llm.client, llm.model))
+            shielded_llm = TaskShieldLLM(llm, shield)
+            tools_loop = ToolsExecutionLoop(
+                [
+                    TaskShieldToolsExecutor(shield, tool_output_formatter),
+                    shielded_llm,
+                ]
+            )
+            pipeline = cls(
+                [
+                    system_message_component,
+                    init_query_component,
+                    TaskShieldUserTaskExtractor(shield),
+                    shielded_llm,
                     tools_loop,
                 ]
             )
