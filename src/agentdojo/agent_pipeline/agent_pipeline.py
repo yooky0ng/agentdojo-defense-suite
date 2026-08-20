@@ -33,6 +33,7 @@ from agentdojo.defenses.camel_adapter import build_camel_pipeline
 from agentdojo.defenses.drift_adapter import build_drift_pipeline
 from agentdojo.defenses.ipiguard_adapter import build_ipiguard_elements
 from agentdojo.defenses.melon_adapter import build_melon_detector
+from agentdojo.defenses.progent_adapter import ProgentPolicyBootstrap
 from agentdojo.functions_runtime import EmptyEnv, Env, FunctionsRuntime
 from agentdojo.logging import Logger
 from agentdojo.models import MODEL_PROVIDERS, ModelsEnum
@@ -53,6 +54,7 @@ DEFENSES = [
     "drift",
     "ipiguard",
     "camel",
+    "progent",
 ]
 """Available defenses."""
 
@@ -285,6 +287,19 @@ class AgentPipeline(BasePipelineElement):
                 raise ValueError("IPIGuard is currently supported only for OpenAI models")
             construct_llm, tools_loop = build_ipiguard_elements(llm.client, llm.model, tool_output_formatter)
             pipeline = cls([system_message_component, init_query_component, construct_llm, tools_loop])
+            pipeline.name = f"{llm_name}-{config.defense}"
+            return pipeline
+        if config.defense == "progent":
+            tools_loop = ToolsExecutionLoop([ToolsExecutor(tool_output_formatter), llm])
+            pipeline = cls(
+                [
+                    system_message_component,
+                    init_query_component,
+                    ProgentPolicyBootstrap(config.suite_name),
+                    llm,
+                    tools_loop,
+                ]
+            )
             pipeline.name = f"{llm_name}-{config.defense}"
             return pipeline
         if config.defense == "transformers_pi_detector":
