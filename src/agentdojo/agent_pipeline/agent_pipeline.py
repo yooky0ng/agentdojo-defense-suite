@@ -38,6 +38,7 @@ from agentdojo.agent_pipeline.tool_execution import (
 from agentdojo.defenses.camel_adapter import build_camel_pipeline
 from agentdojo.defenses.drift_adapter import build_drift_pipeline
 from agentdojo.defenses.melon_adapter import build_melon_detector
+from agentdojo.defenses.progent_adapter import ProgentPolicyBootstrap
 from agentdojo.functions_runtime import EmptyEnv, Env, FunctionsRuntime
 from agentdojo.logging import Logger
 from agentdojo.models import MODEL_PROVIDERS, ModelsEnum
@@ -58,6 +59,7 @@ DEFENSES = [
     "drift",
     "ipiguard",
     "camel",
+    "progent",
 ]
 """Available defenses."""
 
@@ -292,6 +294,19 @@ class AgentPipeline(BasePipelineElement):
             traverse_llm = OpenAITraverseLLM(llm.client, llm.model, temperature=llm.temperature)
             tools_loop = DagToolsExecutionLoop(DagToolsExecutor(traverse_llm, tool_output_formatter))
             pipeline = cls([system_message_component, init_query_component, construct_llm, tools_loop])
+            pipeline.name = f"{llm_name}-{config.defense}"
+            return pipeline
+        if config.defense == "progent":
+            tools_loop = ToolsExecutionLoop([ToolsExecutor(tool_output_formatter), llm])
+            pipeline = cls(
+                [
+                    system_message_component,
+                    init_query_component,
+                    ProgentPolicyBootstrap(config.suite_name),
+                    llm,
+                    tools_loop,
+                ]
+            )
             pipeline.name = f"{llm_name}-{config.defense}"
             return pipeline
         if config.defense == "transformers_pi_detector":
